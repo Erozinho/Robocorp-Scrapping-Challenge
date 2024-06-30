@@ -1,9 +1,14 @@
-import json
 from RPA.Browser.Selenium import Selenium
+from RPA.Robocorp.WorkItems import WorkItems
 from RPA.Excel.Files import Files
 from RPA.HTTP import HTTP
 from time import sleep
-from tasklib import check_date, check_dollar, count_phrase, save_img
+from robocorp.tasks import task
+from tasklib import (check_date,
+                     check_dollar,
+                     count_phrase,
+                     save_img,
+                     write_xls_data)
 
 
 class Challenge:
@@ -11,17 +16,14 @@ class Challenge:
         self.browser = Selenium()
         self.files = Files()
         self.http = HTTP()
-        self.payload = self.load_payload()
-
-    def load_payload(self):
-        with open('resources/payload.json', 'r') as f:
-            return json.load(f)
 
     def close_browser(self) -> None:
         self.browser.close_all_browsers()
 
     def open_target(self, url: str) -> None:
         self.browser.open_available_browser(url)
+        self.browser.set_selenium_implicit_wait()
+        self.browser.maximize_browser_window()
 
     def search_word(self, word: str) -> None:
         try:
@@ -38,12 +40,12 @@ class Challenge:
             raise Exception(f'Error on search: {e}')
 
     def select_topic(self, topic: list) -> None:
-        if not topic:
+        if len(topic) == 0:
             return 'No topic for selection!'
         for value in topic:
             try:
                 select = f'//span[contains(text(), "{value}")]'
-                self.browser.wait_until_element_is_visible(select)
+                self.browser.click_button_when_visible(select)
                 self.browser.click_element(select)
                 sleep(2.75)
             except ValueError:
@@ -74,30 +76,28 @@ class Challenge:
             dollar_bool = check_dollar(title) or check_dollar(desc)
             result = [title, date, desc, img, phrase_c, dollar_bool]
             data.append(result)
-        self.write_xls_data(data)
+        write_xls_data(data)
 
-    def write_xls_data(self, data: list) -> None:
-        self.files.create_workbook('output/News_data.xlsx')
-        for line in data:
-            self.files.append_worksheet(line, "Sheet1")
-        self.files.save_workbook()
 
-    def main(self) -> None:
-        try:
-            # Run everything
-            url = self.payload['url']
-            phrase = self.payload['phrase']
-            topic = self.payload['topic']
-            self.open_target(url)
-            self.search_word(phrase)
-            self.select_topic(topic)
-            self.set_newest()
-            self.get_news(phrase)
+@task
+def main() -> None:
+    scrap = Challenge()
+    try:
+        # Run everything
+        work = WorkItems()
+        url = work.get_work_item_variable("url")
+        phrase = work.get_work_item_variable("phrase")
+        topic = work.get_work_item_variable("topic")
 
-        finally:
-            self.close_browser()
+        scrap.open_target(url)
+        scrap.search_word(phrase)
+        scrap.select_topic(topic)
+        scrap.set_newest()
+        scrap.get_news(phrase)
+
+    finally:
+        scrap.close_browser()
 
 
 if __name__ == "__main__":
-    scrap = Challenge()
-    scrap.main()
+    main()
