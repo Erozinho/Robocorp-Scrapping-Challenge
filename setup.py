@@ -1,5 +1,5 @@
 payload = {
-    "url": "https://www.aljazeera.com",
-    "term": "ukraine",
-    "section": "date"
+    "url": "https://www.latimes.com",
+    "phrase": "ukraine",
+    "topic": ["World & Nation"]
 }
