@@ -9,6 +9,7 @@ from tasklib import (check_date,
                      count_phrase,
                      save_img,
                      write_xls_data)
+from selenium.webdriver.common.by import By
 
 
 class Challenge:
@@ -22,8 +23,8 @@ class Challenge:
 
     def open_target(self, url: str) -> None:
         self.browser.open_available_browser(url)
-        self.browser.set_selenium_implicit_wait()
         self.browser.maximize_browser_window()
+        self.browser.set_selenium_implicit_wait(20)
 
     def search_word(self, word: str) -> None:
         try:
@@ -45,7 +46,7 @@ class Challenge:
         for value in topic:
             try:
                 select = f'//span[contains(text(), "{value}")]'
-                self.browser.click_button_when_visible(select)
+                self.browser.find_elements(select)
                 self.browser.click_element(select)
                 sleep(2.75)
             except ValueError:
@@ -65,13 +66,16 @@ class Challenge:
         data = []
         page = '//ul[@class="search-results-module-results-menu"]/li'
         content = self.browser.find_elements(page)
-        for value in content:
-            img_element = self.browser.find_element(value, 'tag:img')
+        for value in (content):
+            img_element = value.find_element(By.TAG_NAME, 'img')
+            img_src = img_element.get_attribute('src')
             txt = value.text.split('\n')
+
             title = txt[1]
             desc = txt[2]
             date = check_date(txt[3])
-            img = save_img(img_element.get_attribute('src'))
+            img = save_img(img_src)
+
             phrase_c = count_phrase(phrase, title) + count_phrase(phrase, desc)
             dollar_bool = check_dollar(title) or check_dollar(desc)
             result = [title, date, desc, img, phrase_c, dollar_bool]
@@ -85,6 +89,7 @@ def main() -> None:
     try:
         # Run everything
         work = WorkItems()
+        work.get_input_work_item()
         url = work.get_work_item_variable("url")
         phrase = work.get_work_item_variable("phrase")
         topic = work.get_work_item_variable("topic")
