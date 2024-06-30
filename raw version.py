@@ -8,13 +8,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from tasklib import (check_date,
                      check_dollar,
                      count_phrase,
-                     create_image_folder,
                      write_xls_data,
-                     generate_name,
-                     save_img,
-                     get_img_names)
+                     save_img)
 from time import sleep
-import os
 from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 
@@ -41,13 +37,14 @@ class Challenge:
         options.add_argument("disable-blink-features=AutomationControlled")
 
         self.driver = webdriver.Chrome(service=service, options=options)
+        self.driver.implicitly_wait(20)
 
     def close_browser(self) -> None:
         self.driver.quit()
 
     def open_target(self, url: str) -> None:
         self.driver.get(url)
-        self.wait = WebDriverWait(self.driver, 30, poll_frequency=0.2)
+        self.wait = WebDriverWait(self.driver, 45, poll_frequency=0.2)
 
     def search_word(self, word: str) -> None:
         try:
@@ -71,7 +68,7 @@ class Challenge:
                 select = f'//span[contains(text(), "{value}")]'
                 self.wait.until(
                     EC.presence_of_element_located((By.XPATH, select))).click()
-                sleep(1)
+                sleep(2.75)
 
             except ValueError:
                 print("Topic not found/Wrongly digited")
@@ -84,32 +81,32 @@ class Challenge:
 
             element = Select(element)
             element.select_by_visible_text('Newest')
+            sleep(3.5)
 
         except ValueError as e:
             raise f'Error on set to newest: {e}'
 
     def get_news(self, phrase) -> None:
         data = []
-        # page = '//ul[@class="search-results-module-results-menu"]/li/ps-promo'
         page = '//ul[@class="search-results-module-results-menu"]/li'
         content = self.driver.find_elements(By.XPATH, f'{page}')
-        for x in content:
-            txt = x.text.split('\n')
+        for value in content:
+            img_file = value.find_element(By.TAG_NAME, 'img')
+            txt = value.text.split('\n')
             title = txt[1]
             desc = txt[2]
             date = check_date(txt[3])
+            img = save_img(img_file.get_attribute('src'))
             phrase_c = count_phrase(phrase, title) + count_phrase(phrase, desc)
-            dol_bol = bool((check_dollar(title) + check_dollar(desc)))
+            dol_bol = check_dollar(title) or check_dollar(desc)
             result = [title,
                       date,
                       desc,
-                      img_name,
+                      img,
                       phrase_c,
                       dol_bol]
             data.append(result)
         write_xls_data(data)
-
-        # for x in content:
 
     def main(self) -> None:
         try:
@@ -121,13 +118,10 @@ class Challenge:
             self.search_word(phrase)
             self.select_topic(topic)
             self.set_newest()
-            sleep(2)
             self.get_news(phrase)
-            sleep(20)
 
         finally:
             self.close_browser()
-            pass
 
 
 if __name__ == "__main__":
