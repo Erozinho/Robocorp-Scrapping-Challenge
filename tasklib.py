@@ -1,29 +1,22 @@
-import os
-from datetime import datetime
-import requests
-import glob
-from collections import Counter
+from os import makedirs, path
+from datetime import datetime as dt
+from requests import get
+from re import search, sub
 from openpyxl import Workbook
 from random import choice
 from string import ascii_letters, digits
 
 
-def create_image_folder() -> None:
-    dir = "./output/images"
-    if not os.path.exists(dir):
-        os.makedirs(dir)
-
-
 def check_date(data: str) -> str:
     if "minutes" in data:
-        today = datetime.now.strftime("%B %d, %Y")
-        return today
+        today = dt.now
+        return today.strftime("%B %d, %Y")
     return data
 
 
 def write_xls_data(data: list) -> None:
     file_path = "./output/News data.xlsx"
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    makedirs(path.dirname(file_path), exist_ok=True)
     wb = Workbook()
     ws = wb.active
 
@@ -40,39 +33,32 @@ def generate_name(extension="jpg", nchar=8) -> str:
 
 
 def count_phrase(phrase: str, text: str) -> int:
-    c = 0
-    txt = text.split()
-
-    for word in txt:
-        if word.strip(",.;:-?!+=*%$#@[]") == phrase:
-            c += 1
-
-    return c
+    text = sub(r'[^\w\s]', '', text.lower())
+    phrase = phrase.lower()
+    return text.split().count(phrase)
 
 
 def check_dollar(text: str) -> bool:
-    pattern = ["$", "dollars", "usd", "dollar"]
-    count = Counter(text.lower())
-    number = {char: count[char] for char in pattern}
-
-    if number != 0:
-        return True
-    return False
+    patterns = [
+        r'\$\d+',
+        r'\d+\s*dollars',
+        r'\d+\s*usd',
+        r'\d+\s*dollar',
+    ]
+    text_lower = text.lower()
+    return any(search(pattern, text_lower) for pattern in patterns)
 
 
 def save_img(image_url: str) -> str:
+    file_path = "./output/images/"
     image_name = generate_name()
+    makedirs(path.dirname(file_path), exist_ok=True)
 
     if image_url == "":
         return ""
 
-    img_data = requests.get(image_url).content
-    with open(f"./output/images/{image_name}", "wb") as handler:
+    img_data = get(image_url).content
+    with open(f"{file_path+image_name}", "wb") as handler:
         handler.write(img_data)
 
     return image_name
-
-
-def get_img_names(path="./output/images/*.jpg"):
-    files = glob.glob(path)
-    return files
